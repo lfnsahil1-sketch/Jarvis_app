@@ -1,5 +1,5 @@
 name: jarvis_app
-description: "J.A.R.V.I.S. Tactical AI Assistant"
+description: J.A.R.V.I.S. Personal Assistant Application
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,19 +9,19 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  http: ^1.2.0
+  http: ^1.1.0
   flutter_secure_storage: ^9.0.0
   sqflite: ^2.3.0
-  path: ^1.9.0
-  speech_to_text: ^7.0.0
-  flutter_tts: ^4.0.2
-  connectivity_plus: ^6.0.0
+  path: ^1.8.3
+  speech_to_text: ^6.6.0
+  flutter_tts: ^3.8.3
+  cupertino_icons: ^1.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
