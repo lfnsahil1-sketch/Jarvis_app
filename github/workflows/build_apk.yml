@@ -25,11 +25,21 @@ jobs:
           channel: 'stable'
           cache: false
 
-      - name: Force Generate Android Native Structure
+      - name: Generate Fresh Android Structure
         run: flutter create . --platforms=android --org=com.jarvis.app --overwrite
 
-      - name: Apply Custom AndroidManifest
-        run: cp -f AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+      - name: Auto-Fix Permissions, App Name, and Theme
+        run: |
+          # 1. Set App Display Name to J.A.R.V.I.S.
+          sed -i 's/android:label="[^"]*"/android:label="J.A.R.V.I.S."/g' android/app/src/main/AndroidManifest.xml
+          
+          # 2. Fix ValueTheme error automatically if present
+          sed -i 's/@style\/ValueTheme/@style\/NormalTheme/g' android/app/src/main/AndroidManifest.xml
+
+          # 3. Inject network and audio permissions
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' android/app/src/main/AndroidManifest.xml
 
       - name: Clean Cache and Install Dependencies
         run: |
@@ -44,4 +54,3 @@ jobs:
         with:
           name: jarvis-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
