@@ -25,6 +25,12 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Re-generate Android Platform Files
+        run: flutter create . --platforms=android --org=com.jarvis.app
+
+      - name: Apply Custom AndroidManifest
+        run: cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
       - name: Install Dependencies
         run: flutter pub get
 
