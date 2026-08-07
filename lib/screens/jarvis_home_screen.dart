@@ -28,7 +28,6 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
   String _statusText = "SYSTEM ACTIVE — LISTENING";
   String _lastTranscript = "Tap core to reconnect mic if needed...";
   
-  // State variables replicating Flask application capabilities
   String _currentSessionId = "default";
   String _currentSessionName = "DEFAULT";
   String _currentAiMode = "conversation"; // "conversation" or "study"
@@ -165,19 +164,17 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
       _lastTranscript = reply;
     });
 
-    // Sanitize markup for audio readout
     String cleanText = reply.replaceAll(RegExp(r'[*#_`~]'), '');
     await _tts.speak(cleanText);
   }
 
-  // --- Session Management Handlers ---
   void _switchSession(ChatSession session) {
     setState(() {
       _currentSessionId = session.id;
       _currentSessionName = session.name;
     });
     _loadHistory();
-    Navigator.pop(context); // Close drawer
+    Navigator.pop(context);
   }
 
   void _createNewSession() async {
@@ -290,7 +287,6 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
         ),
         centerTitle: true,
         actions: [
-          // Mode Toggle Button (CONVO / STUDY)
           TextButton(
             onPressed: () {
               setState(() {
@@ -306,7 +302,6 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
               ),
             ),
           ),
-          // View Toggle Button (CORE / FEED)
           IconButton(
             icon: Icon(
               _currentView == "home" ? Icons.chat_bubble_outline : Icons.center_focus_strong,
@@ -330,7 +325,6 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
     );
   }
 
-  // --- Home Screen (HUD Core) ---
   Widget _buildHomeScreen() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -415,7 +409,6 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
     );
   }
 
-  // --- Chat Screen (Feed View) ---
   Widget _buildChatScreen() {
     return Column(
       children: [
@@ -428,8 +421,8 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
               bool isUser = msg.role == 'user';
               return Align(
                 alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                containerMargin: const EdgeInsets.symmetric(vertical: 6),
                 child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.80),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
@@ -497,7 +490,6 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
     );
   }
 
-  // --- Drawer Sidebar (Channels & Logs) ---
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: const Color(0xFF07120C),
@@ -521,7 +513,7 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF059669),
-                  padding: const EdgeInsets.vertical(12),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 onPressed: _createNewSession,
                 child: const Text("+ NEW CHANNEL", style: TextStyle(color: Color(0xFF040806), fontWeight: FontWeight.bold)),
@@ -583,8 +575,4 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
     _textInputController.dispose();
     super.dispose();
   }
-}
-
-extension AlignExtension on Widget {
-  Widget containerMargin(EdgeInsets geometry) => Padding(padding: geometry, child: this);
 }
