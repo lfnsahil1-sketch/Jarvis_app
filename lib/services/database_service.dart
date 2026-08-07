@@ -3,12 +3,12 @@ import 'package:path/path.dart';
 import '../models/chat_message.dart';
 
 class DatabaseService {
-  static Database? _db;
+  static Database? _database;
 
   static Future<Database> get database async {
-    if (_db != null) return _db!;
-    _db = await _initDB();
-    return _db!;
+    if (_database != null) return _database!;
+    _database = await _initDB();
+    return _database!;
   }
 
   static Future<Database> _initDB() async {
@@ -18,41 +18,54 @@ class DatabaseService {
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE sessions (
+          CREATE TABLE sessions(
             id TEXT PRIMARY KEY,
-            name TEXT
+            name TEXT NOT NULL
           )
         ''');
         await db.execute('''
-          CREATE TABLE messages (
+          CREATE TABLE messages(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT,
-            role TEXT,
-            content TEXT,
-            timestamp TEXT
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp TEXT NOT NULL
           )
         ''');
-        // Seed default channel
         await db.insert('sessions', {'id': 'default', 'name': 'DEFAULT'});
       },
     );
   }
 
-  // --- Session Management ---
   static Future<List<ChatSession>> getSessions() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('sessions');
-    if (maps.isEmpty) {
-      await db.insert('sessions', {'id': 'default', 'name': 'DEFAULT'});
-      return [ChatSession(id: 'default', name: 'DEFAULT')];
-    }
-    return List.generate(maps.length, (i) => ChatSession.fromMap(maps[i]));
+    List<Map<String, dynamic>> maps = await db.query('sessions');
+    return maps.map((m) => ChatSession.fromMap(m)).toList();
+  }
+
+  static Future<List<ChatMessage>> getHistory(String sessionId) async {
+    final db = await database;
+    List<Map<String, dynamic>> maps = await db.query(
+      'messages',
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+      orderBy: 'id ASC',
+    );
+    return maps.map((m) => ChatMessage.fromMap(m)).toList();
+  }
+
+  static Future<void> insertMessage(ChatMessage msg) async {
+    final db = await database;
+    await db.insert('messages', msg.toMap());
   }
 
   static Future<void> createSession(String id, String name) async {
     final db = await database;
-    await db.insert('sessions', {'id': id, 'name': name},
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'sessions',
+      {'id': id, 'name': name},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   static Future<void> renameSession(String id, String newName) async {
@@ -66,20 +79,23 @@ class DatabaseService {
     await db.delete('messages', where: 'session_id = ?', whereArgs: [id]);
   }
 
-  // --- Message Management ---
-  static Future<void> insertMessage(ChatMessage msg) async {
+  static Future<void> importJsonHistory(String sessionId, List<dynamic> jsonList) async {
     final db = await database;
-    await db.insert('messages', msg.toMap());
-  }
+    await createSession(sessionId, sessionId.toUpperCase());
+    await db.delete('messages', where: 'session_id = ?', whereArgs: [sessionId]);
 
-  static Future<List<ChatMessage>> getHistory(String sessionId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'messages',
-      where: 'session_id = ?',
-      whereArgs: [sessionId],
-      orderBy: 'id ASC',
-    );
-    return List.generate(maps.length, (i) => ChatMessage.fromMap(maps[i]));
+    for (var item in jsonList) {
+      if (item is Map && item.containsKey('role') && item.containsKey('content')) {
+        String role = item['role'];
+        if (role == 'system') continue;
+
+        await db.insert('messages', {
+          'session_id': sessionId,
+          'role': role,
+          'content': item['content'],
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+    }
   }
 }
