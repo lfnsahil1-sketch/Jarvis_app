@@ -42,3 +42,4 @@ jobs:
         with:
           name: jarvis-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+            
