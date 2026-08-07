@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    # Runs automatically every day at 12:00 AM UTC
+    - cron: '0 0 * * *'
 
 jobs:
   build:
