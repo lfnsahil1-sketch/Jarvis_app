@@ -28,6 +28,10 @@ jobs:
       - name: Re-generate Android Project Structure
         run: flutter create . --platforms=android --org=com.jarvis.app
 
+      - name: Inject Microphone Permission
+        run: |
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+
       - name: Install Dependencies
         run: flutter pub get
 
