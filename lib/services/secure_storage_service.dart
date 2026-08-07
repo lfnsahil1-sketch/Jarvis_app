@@ -14,8 +14,4 @@ class SecureStorageService {
   static Future<String?> getApiKey() async {
     return await _storage.read(key: _keyGroqApi);
   }
-
-  static Future<void> deleteApiKey() async {
-    await _storage.delete(key: _keyGroqApi);
-  }
 }
