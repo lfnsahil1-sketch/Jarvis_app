@@ -1,101 +1,47 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import '../models/chat_message.dart';
+name: Build Standalone Flutter APK
 
-class DatabaseService {
-  static Database? _database;
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-  static Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB();
-    return _database!;
-  }
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-  static Future<Database> _initDB() async {
-    String path = join(await getDatabasesPath(), 'jarvis_memory.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE sessions(
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE messages(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            timestamp TEXT NOT NULL
-          )
-        ''');
-        await db.insert('sessions', {'id': 'default', 'name': 'DEFAULT'});
-      },
-    );
-  }
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-  static Future<List<ChatSession>> getSessions() async {
-    final db = await database;
-    List<Map<String, dynamic>> maps = await db.query('sessions');
-    return maps.map((m) => ChatSession.fromMap(m)).toList();
-  }
+      - name: Set up Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-  static Future<List<ChatMessage>> getHistory(String sessionId) async {
-    final db = await database;
-    List<Map<String, dynamic>> maps = await db.query(
-      'messages',
-      where: 'session_id = ?',
-      whereArgs: [sessionId],
-      orderBy: 'id ASC',
-    );
-    return maps.map((m) => ChatMessage.fromMap(m)).toList();
-  }
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
 
-  static Future<void> insertMessage(ChatMessage msg) async {
-    final db = await database;
-    await db.insert('messages', msg.toMap());
-  }
+      - name: Re-generate Android Project Structure
+        run: flutter create . --platforms=android --org=com.jarvis.app
 
-  static Future<void> createSession(String id, String name) async {
-    final db = await database;
-    await db.insert(
-      'sessions',
-      {'id': id, 'name': name},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
+      - name: Inject Permissions
+        run: |
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' android/app/src/main/AndroidManifest.xml
 
-  static Future<void> renameSession(String id, String newName) async {
-    final db = await database;
-    await db.update('sessions', {'name': newName}, where: 'id = ?', whereArgs: [id]);
-  }
+      - name: Install Dependencies
+        run: flutter pub get
 
-  static Future<void> deleteSession(String id) async {
-    final db = await database;
-    await db.delete('sessions', where: 'id = ?', whereArgs: [id]);
-    await db.delete('messages', where: 'session_id = ?', whereArgs: [id]);
-  }
+      - name: Build Arm64 Release APK
+        run: flutter build apk --release --target-platform android-arm64
 
-  static Future<void> importJsonHistory(String sessionId, List<dynamic> jsonList) async {
-    final db = await database;
-    await createSession(sessionId, sessionId.toUpperCase());
-    await db.delete('messages', where: 'session_id = ?', whereArgs: [sessionId]);
-
-    for (var item in jsonList) {
-      if (item is Map && item.containsKey('role') && item.containsKey('content')) {
-        String role = item['role'];
-        if (role == 'system') continue;
-
-        await db.insert('messages', {
-          'session_id': sessionId,
-          'role': role,
-          'content': item['content'],
-          'timestamp': DateTime.now().toIso8601String(),
-        });
-      }
-    }
-  }
-}
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
