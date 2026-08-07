@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
@@ -53,8 +54,26 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
 
   void _setupAudioEngine() async {
     await _tts.setLanguage("en-GB");
-    await _tts.setPitch(0.95);
-    await _tts.setSpeechRate(0.5);
+    await _tts.setPitch(0.85); // Deeper aristocratic tone
+    await _tts.setSpeechRate(0.48);
+
+    try {
+      List<dynamic> voices = await _tts.getVoices;
+      for (var voice in voices) {
+        if (voice is Map) {
+          String name = voice["name"].toString().toLowerCase();
+          String locale = voice["locale"].toString().replaceAll('_', '-');
+          
+          if (locale.contains("en-GB") && 
+             (name.contains("male") || name.contains("rsk") || name.contains("network") || name.contains("gb-x"))) {
+            await _tts.setVoice({"name": voice["name"], "locale": voice["locale"]});
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Voice selection error: $e");
+    }
 
     _tts.setCompletionHandler(() {
       setState(() {
@@ -229,6 +248,73 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
     if (_currentSessionId == session.id) {
       _switchSession(ChatSession(id: 'default', name: 'DEFAULT'));
     }
+  }
+
+  void _showImportDialog() {
+    TextEditingController sessionController = TextEditingController(text: "restored_channel");
+    TextEditingController jsonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF07120C),
+        title: const Text("RESTORE MEMORIES", style: TextStyle(color: Color(0xFF10B981))),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: sessionController,
+                style: const TextStyle(color: Color(0xFF34D399)),
+                decoration: const InputDecoration(
+                  labelText: "Channel Name",
+                  labelStyle: TextStyle(color: Color(0xFF10B981)),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF10B981))),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: jsonController,
+                maxLines: 6,
+                style: const TextStyle(color: Color(0xFF34D399), fontSize: 12),
+                decoration: const InputDecoration(
+                  hintText: 'Paste contents of chat JSON here...\n[{"role": "user", "content": "..."}, ...]',
+                  hintStyle: TextStyle(color: Colors.white30),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF10B981))),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF34D399))),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: const Text("CANCEL", style: TextStyle(color: Colors.redAccent)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
+            child: const Text("RESTORE", style: TextStyle(color: Colors.black)),
+            onPressed: () async {
+              try {
+                String rawJson = jsonController.text.trim();
+                List<dynamic> parsed = jsonDecode(rawJson);
+                String channelId = sessionController.text.trim().toLowerCase().replaceAll(' ', '_');
+                
+                await DatabaseService.importJsonHistory(channelId, parsed);
+                _loadSessions();
+                _switchSession(ChatSession(id: channelId, name: channelId.toUpperCase()));
+                Navigator.pop(context);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Invalid JSON Format: $e")),
+                );
+              }
+            },
+          )
+        ],
+      ),
+    );
   }
 
   void _showApiKeyDialog() {
@@ -508,16 +594,32 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF059669),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _createNewSession,
+                    child: const Text("+ NEW CHANNEL", style: TextStyle(color: Color(0xFF040806), fontWeight: FontWeight.bold)),
+                  ),
                 ),
-                onPressed: _createNewSession,
-                child: const Text("+ NEW CHANNEL", style: TextStyle(color: Color(0xFF040806), fontWeight: FontWeight.bold)),
-              ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF10B981)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    onPressed: _showImportDialog,
+                    child: const Text("📥 RESTORE LOGS", style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
