@@ -25,19 +25,6 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Re-generate Android Project Structure
-        run: flutter create . --platforms=android --org=com.jarvis.app
-
-      - name: Configure App Display Name to J.A.R.V.I.S.
-        run: |
-          sed -i 's/android:label="jarvis_app"/android:label="J.A.R.V.I.S."/g' android/app/src/main/AndroidManifest.xml
-
-      - name: Inject Permissions
-        run: |
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' android/app/src/main/AndroidManifest.xml
-
       - name: Install Dependencies
         run: flutter pub get
 
