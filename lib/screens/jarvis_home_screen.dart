@@ -54,7 +54,7 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
 
   void _setupAudioEngine() async {
     await _tts.setLanguage("en-GB");
-    await _tts.setPitch(0.85); // Deeper aristocratic tone
+    await _tts.setPitch(0.80); // Deeper aristocratic tone
     await _tts.setSpeechRate(0.48);
 
     try {
@@ -64,15 +64,17 @@ class _JarvisHomeScreenState extends State<JarvisHomeScreen> with SingleTickerPr
           String name = voice["name"].toString().toLowerCase();
           String locale = voice["locale"].toString().replaceAll('_', '-');
           
-          if (locale.contains("en-GB") && 
-             (name.contains("male") || name.contains("rsk") || name.contains("network") || name.contains("gb-x"))) {
-            await _tts.setVoice({"name": voice["name"], "locale": voice["locale"]});
-            break;
+          if (locale.contains("en-GB") || locale.contains("en-gb")) {
+            if (name.contains("male") || name.contains("rsk") || name.contains("fis") || name.contains("gb-x")) {
+              await _tts.setVoice({"name": voice["name"], "locale": voice["locale"]});
+              debugPrint("Successfully locked J.A.R.V.I.S. voice to: ${voice["name"]}");
+              break;
+            }
           }
         }
       }
     } catch (e) {
-      debugPrint("Voice selection error: $e");
+      debugPrint("Voice engine override log: $e");
     }
 
     _tts.setCompletionHandler(() {
