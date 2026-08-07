@@ -25,14 +25,17 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Re-generate Android Platform Files
-        run: flutter create . --platforms=android --org=com.jarvis.app
-
-      - name: Apply Custom AndroidManifest
-        run: cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-
       - name: Install Dependencies
         run: flutter pub get
+
+      - name: Force Generate Android Native Structure
+        run: flutter create . --platforms=android --org=com.jarvis.app --overwrite
+
+      - name: Apply Custom AndroidManifest if present
+        run: |
+          if [ -f "AndroidManifest.xml" ]; then
+            cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          fi
 
       - name: Build Arm64 Release APK
         run: flutter build apk --release --target-platform android-arm64
